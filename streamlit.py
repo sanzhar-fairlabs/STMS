@@ -9,13 +9,19 @@ import pandas as pd
 AWS_S3_BUCKET = "fairlabs-shared"
 
 # Create the clients
-s3_client = boto3.client('s3')
+s3_client = boto3.client(
+    's3', 
+    aws_access_key_id=st.secrets["aws_access_key_id"],
+    aws_secret_access_key=st.secrets["aws_secret_access_key"]
+)
 lambda_client = boto3.client('lambda', 
     config=Config(
         read_timeout=900,
         connect_timeout=900,
         retries={"max_attempts": 0}
-    )
+    ),
+    aws_access_key_id=st.secrets["aws_access_key_id"],
+    aws_secret_access_key=st.secrets["aws_secret_access_key"]
 )
 
 # Clear the page
