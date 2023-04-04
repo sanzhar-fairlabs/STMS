@@ -110,49 +110,6 @@ if st.button("Search"):
                 else:
                     print(f"Unsuccessful S3 get_object response. Status - {status}")
 
-                # ## Display the results in a chart
-                # # Grid chart
-                # selection = alt.selection_multi(fields=['titles'], bind='legend')
-                # grid_chart = alt.Chart(df).mark_circle(size=60, stroke='#666', strokeWidth=1, opacity=0.3).encode(
-                #     x=#'x',
-                #     alt.X('x',
-                #         scale=alt.Scale(zero=False),
-                #         axis=alt.Axis(labels=False, ticks=False, domain=False)
-                #     ),
-                #     y=
-                #     alt.Y('y',
-                #         scale=alt.Scale(zero=False),
-                #         axis=alt.Axis(labels=False, ticks=False, domain=False)
-                #     ),
-                #     # href='link:N',
-                #     color=alt.Color('cluster:N', 
-                #                     legend=alt.Legend(columns=1, symbolLimit=0, labelFontSize=14)
-                #                 ),
-                #     opacity=alt.condition(selection, alt.value(1), alt.value(0.2)),
-                #     tooltip=['title', 'cluster', 'similarity']
-                # ).properties(
-                #     width=800,
-                #     height=500
-                # ).add_selection(
-                #     selection
-                # ).configure_legend(labelLimit= 0).configure_view(
-                #     strokeWidth=0
-                # ).configure(background="#FFFFFF").properties(
-                #     title='R&D Monitoring'
-                # )
-                # grid_chart = grid_chart.interactive()
-                # st.altair_chart(grid_chart, use_container_width=True)
-
-                # # Count chart
-                # class_counts = df.cluster.value_counts()
-                # count_chart = alt.Chart(class_counts.reset_index()).mark_bar().encode(
-                #     y=alt.Y('index:O', sort=alt.EncodingSortField(field='cluster', order='descending')),
-                #     x='cluster:Q'
-                # )
-                # count_chart = count_chart.properties(title='Row counts by cluster', height=alt.Step(20))
-                # count_chart = count_chart.configure_axis(labelFontSize=14, titleFontSize=16)
-                # count_chart = count_chart.interactive()
-
                 # Clustering Visualization
                 if df.shape[0] > 5000:
                     df_clusters_sampled = df.sample(n=5000, random_state=1)
@@ -197,6 +154,17 @@ if st.button("Search"):
                         st.write(f" - {article}")
                 
                 st.markdown("### Data")
+
+                # Generate dataframe with cluster count
+                df['freq'] = df.groupby('cluster')['cluster'].transform('count')
+                reports_df = pd.DataFrame.from_dict(summaries, orient='index', columns=['topic'])
+                reports_df = reports_df.reset_index()
+                reports_df = reports_df.rename(columns={'index': 'cluster'})
+                reports_df['cluster'] = reports_df['cluster'].astype(int)     
+                reports_df = reports_df.merge(df[['freq', 'cluster']], on='cluster', how='left')
+                reports_df = reports_df.drop_duplicates(subset=['cluster'])
+                reports_df = reports_df.reset_index(drop=True)
+
                 # Display dataframe with sorting column
                 showed_data = df.copy()
                 showed_data = showed_data[['cluster', 'topic', 'title', 'summary', 'author', 'published_date']]
@@ -218,25 +186,37 @@ if st.button("Search"):
                 # Generate summary
                 if _generate_summary:
                     with st.spinner("Generating report ..."):
-                            # Invoke the lambda function
-                            response = lambda_client.invoke(
-                                FunctionName='gpt_analytics',
-                                InvocationType='RequestResponse', # Synchronous call
-                                Payload=json.dumps({
-                                    "filepath": filepath,
-                                    "cluster_top_n": cluster_top_n,
-                                    "give_gpt_n_sample": give_gpt_n_sample
-                                })
-                            )
-                            result = json.loads(response['Payload'].read().decode())
-                            print("Reports: ", result)
-                            reports = json.loads(result['body'])
-                            # Display the reports
-                            st.markdown("### Reports")
-                            for i, report in enumerate(reports):
-                                st.markdown(f"##### Cluster: {i}")
-                                st.markdown(f"##### Topic: {summaries[str(i)]}")
-                                st.markdown(f"##### Summary: {report}")
-                                # st.write(report)
+                        # Invoke the lambda function
+                        response = lambda_client.invoke(
+                            FunctionName='gpt_analytics',
+                            InvocationType='RequestResponse', # Synchronous call
+                            Payload=json.dumps({
+                                "filepath": filepath,
+                                "cluster_top_n": cluster_top_n,
+                                "give_gpt_n_sample": give_gpt_n_sample
+                            })
+                        )
+                        result = json.loads(response['Payload'].read().decode())
+                        print("Reports: ", result)
+                        reports = json.loads(result['body'])
+                        
+                        reports_df['reports'] = reports
+
+                        # Display the reports
+                        st.markdown("### Reports")
+                        for i, report in enumerate(reports):
+                            st.markdown(f"##### Cluster: {i}")
+                            st.markdown(f"##### Topic: {summaries[str(i)]}")
+                            st.markdown(f"##### Summary: {report}")
+                        
+                        st.dataframe(reports_df, use_container_width=True)
+
+                        reports_csv = convert_df(reports_df)
+                        st.download_button(
+                            label="Download Reports",
+                            data=reports_csv,
+                            file_name='FairLabsReports.csv',
+                            mime='text/csv',
+                        )
             else:
                 st.write("Error: Could not retrieve results")
