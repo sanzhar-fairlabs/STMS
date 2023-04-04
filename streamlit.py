@@ -1,12 +1,10 @@
 import streamlit as st
 import boto3
 from botocore.config import Config
-import requests
 from datetime import timedelta
 import json
 import altair as alt
 import pandas as pd
-import numpy as np
 
 AWS_S3_BUCKET = "fairlabs-shared"
 
@@ -192,15 +190,18 @@ if st.button("Search"):
                 
                 st.markdown("### Data")
                 # Display dataframe with sorting column
-                st.dataframe(df, use_container_width=True)
+                showed_data = df.copy()
+                showed_data = showed_data[['cluster', 'topic', 'title', 'summary', 'author', 'published_date']]
+                showed_data = showed_data.rename(columns={'summary': 'body'})
+                st.dataframe(showed_data, use_container_width=True)
 
                 # Download button
                 @st.cache_data
                 def convert_df(df):
                     return df.to_csv().encode('utf-8')
-                csv = convert_df(df)
+                csv = convert_df(showed_data)
                 st.download_button(
-                    label="Download data as CSV",
+                    label="Download",
                     data=csv,
                     file_name='FairLabsData.csv',
                     mime='text/csv',
@@ -225,9 +226,9 @@ if st.button("Search"):
                             # Display the reports
                             st.markdown("### Reports")
                             for i, report in enumerate(reports):
-                                st.markdown(f"#### Cluster: {i}")
-                                st.markdown(f"#### Topic: {summaries[i]}")
-                                st.markdown(f"#### Summary: {report[i]}")
+                                st.markdown(f"##### Cluster: {i}")
+                                st.markdown(f"##### Topic: {summaries[str(i)]}")
+                                st.markdown(f"##### Summary: {report}")
                                 # st.write(report)
             else:
                 st.write("Error: Could not retrieve results")
