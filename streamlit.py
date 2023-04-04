@@ -12,7 +12,8 @@ AWS_S3_BUCKET = "fairlabs-shared"
 s3_client = boto3.client(
     's3', 
     aws_access_key_id=st.secrets["aws_access_key_id"],
-    aws_secret_access_key=st.secrets["aws_secret_access_key"]
+    aws_secret_access_key=st.secrets["aws_secret_access_key"],
+    region_name='ap-northeast-2'
 )
 lambda_client = boto3.client('lambda', 
     config=Config(
@@ -21,7 +22,8 @@ lambda_client = boto3.client('lambda',
         retries={"max_attempts": 0}
     ),
     aws_access_key_id=st.secrets["aws_access_key_id"],
-    aws_secret_access_key=st.secrets["aws_secret_access_key"]
+    aws_secret_access_key=st.secrets["aws_secret_access_key"],
+    region_name='ap-northeast-2'
 )
 
 # Clear the page
